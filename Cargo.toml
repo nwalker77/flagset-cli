@@ -1,0 +1,12 @@
+[package]
+name = "flagset-cli"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "A tiny, dependency-free feature flag library and CLI"
+
+[[bin]]
+name = "flagset"
+path = "src/main.rs"
+
+[dependencies]
