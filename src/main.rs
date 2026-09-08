@@ -5,6 +5,7 @@ use std::process::ExitCode;
 fn usage() -> ExitCode {
     eprintln!("usage: flagset <config-file> list");
     eprintln!("       flagset <config-file> check <flag> <key>");
+    eprintln!("       flagset <config-file> validate");
     ExitCode::FAILURE
 }
 
@@ -34,6 +35,12 @@ fn main() -> ExitCode {
     };
 
     match command {
+        "validate" => {
+            let mut names: Vec<&str> = flagset.names().collect();
+            names.sort_unstable();
+            println!("ok: {} flag(s)", names.len());
+            ExitCode::SUCCESS
+        }
         "list" => {
             let mut names: Vec<&str> = flagset.names().collect();
             names.sort_unstable();

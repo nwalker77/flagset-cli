@@ -61,7 +61,14 @@ dark_mode enabled=true rollout=100 overrides=0
 
 $ flagset flags.conf check checkout_v2 user-482
 on
+
+$ flagset flags.conf validate
+ok: 2 flag(s)
 ```
+
+`validate` parses the config and exits non-zero with a `line N: ...` error on
+stderr if it's malformed, without needing a flag or key to check - useful as
+a CI step that guards a config file before it's deployed.
 
 ## Status
 
