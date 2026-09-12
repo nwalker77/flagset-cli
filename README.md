@@ -24,6 +24,7 @@ flag checkout_v2 rollout=25
 flag legacy_export enabled=false
 flag legacy_export_pilot enabled=false
 override legacy_export_pilot acct-9001=true
+flag holiday_banner expires=2026-01-15
 ```
 
 - `flag <name>` with no attributes means enabled, 100% rollout.
@@ -31,10 +32,16 @@ override legacy_export_pilot acct-9001=true
   by hashing `(flag name, key)` - the same key always lands in the same
   bucket, across restarts, because the hash isn't seeded randomly.
 - `enabled=false` turns a flag fully off regardless of rollout.
+- `expires=YYYY-MM-DD` is a sunset date. From that date on (inclusive)
+  the flag evaluates to false, regardless of `enabled` or `rollout` -
+  useful for a flag that was only ever meant to live for a launch window
+  or a migration, so it doesn't linger on by accident after the date
+  everyone agreed it should go away.
 - `override <flag> <key>=true|false` pins one key to a fixed result. An
-  override wins even over `enabled=false` or a 0% rollout - it's meant as
-  an escape hatch, not part of the normal rollout math. A flag must be
-  declared before any `override` line that targets it.
+  override wins even over `enabled=false`, a 0% rollout, or an expired
+  flag - it's meant as an escape hatch, not part of the normal rollout
+  math. A flag must be declared before any `override` line that targets
+  it.
 
 ## Library usage
 
@@ -50,14 +57,16 @@ if flags.is_enabled("checkout_v2", &user.id)? {
 instead of silently treating a typo as "off." If you want to show a
 user which rollout bucket they're in without evaluating a specific flag,
 `flagset_cli::bucket(flag_name, key)` is the same hash the library uses
-internally, exposed directly.
+internally, exposed directly. `FlagSet::is_expired(flag_name)` reports
+whether a flag's `expires` date has already passed, for a cleanup job
+that wants to find stale flags without evaluating them against any key.
 
 ## CLI usage
 
 ```
 $ flagset flags.conf list
-checkout_v2 enabled=true rollout=25 overrides=0
-dark_mode enabled=true rollout=100 overrides=0
+checkout_v2 enabled=true rollout=25 expires=none overrides=0
+dark_mode enabled=true rollout=100 expires=none overrides=0
 
 $ flagset flags.conf check checkout_v2 user-482
 on

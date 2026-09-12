@@ -126,6 +126,35 @@ fn comments_and_blank_lines_are_ignored() {
 }
 
 #[test]
+fn expired_flag_is_off_even_when_enabled_and_full_rollout() {
+    let flags = parse("flag old_banner expires=2000-01-01\n").expect("config should parse");
+    assert_eq!(flags.is_enabled("old_banner", "anyone"), Ok(false));
+    assert_eq!(flags.is_expired("old_banner"), Some(true));
+}
+
+#[test]
+fn future_expiry_does_not_affect_evaluation() {
+    let flags = parse("flag new_banner expires=9999-01-01\n").expect("config should parse");
+    assert_eq!(flags.is_enabled("new_banner", "anyone"), Ok(true));
+    assert_eq!(flags.is_expired("new_banner"), Some(false));
+}
+
+#[test]
+fn override_wins_even_over_an_expired_flag() {
+    let flags = parse("flag old_banner expires=2000-01-01\noverride old_banner vip=true\n")
+        .expect("config should parse");
+    assert_eq!(flags.is_enabled("old_banner", "vip"), Ok(true));
+    assert_eq!(flags.is_enabled("old_banner", "randomer"), Ok(false));
+}
+
+#[test]
+fn is_expired_is_none_without_an_expires_attribute_or_flag() {
+    let flags = parse("flag dark_mode\n").expect("config should parse");
+    assert_eq!(flags.is_expired("dark_mode"), None);
+    assert_eq!(flags.is_expired("does_not_exist"), None);
+}
+
+#[test]
 fn parse_error_cases() {
     struct Case {
         desc: &'static str,
@@ -173,6 +202,21 @@ fn parse_error_cases() {
             desc: "unrecognized attribute",
             input: "flag a color=blue\n",
             want: ParseError::UnknownAttribute(1, "color".to_string()),
+        },
+        Case {
+            desc: "expires with an invalid month",
+            input: "flag a expires=2026-13-01\n",
+            want: ParseError::InvalidExpiry(1, "2026-13-01".to_string()),
+        },
+        Case {
+            desc: "expires with a day that doesn't exist in that month",
+            input: "flag a expires=2025-02-30\n",
+            want: ParseError::InvalidExpiry(1, "2025-02-30".to_string()),
+        },
+        Case {
+            desc: "expires that isn't a date at all",
+            input: "flag a expires=soon\n",
+            want: ParseError::InvalidExpiry(1, "soon".to_string()),
         },
         Case {
             desc: "unrecognized top-level directive",
