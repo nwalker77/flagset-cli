@@ -79,6 +79,24 @@ ok: 2 flag(s)
 stderr if it's malformed, without needing a flag or key to check - useful as
 a CI step that guards a config file before it's deployed.
 
+Any subcommand takes an optional `--json` flag for scripting, printing one
+JSON value to stdout instead of the plain-text formats above:
+
+```
+$ flagset flags.conf list --json
+[{"name":"checkout_v2","enabled":true,"rollout":25,"expires":null,"overrides":0}]
+
+$ flagset flags.conf check checkout_v2 user-482 --json
+{"flag":"checkout_v2","key":"user-482","enabled":true}
+
+$ flagset flags.conf validate --json
+{"ok":true,"flags":2}
+```
+
+A parse or eval error under `--json` is reported as `{"ok":false,"error":"..."}`
+on stdout instead of a `line N: ...` message on stderr, so a caller parsing
+the output doesn't have to fork its handling between two streams.
+
 ## Status
 
 Early. The parser and evaluator are stable enough to build on; the CLI is

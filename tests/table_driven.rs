@@ -1,4 +1,4 @@
-use flagset_cli::{bucket, parse, EvalError, ParseError};
+use flagset_cli::{bucket, parse, EvalError, FlagInfo, ParseError};
 
 const CONFIG: &str = "
 # a mix of the shapes real config files end up taking
@@ -152,6 +152,27 @@ fn is_expired_is_none_without_an_expires_attribute_or_flag() {
     let flags = parse("flag dark_mode\n").expect("config should parse");
     assert_eq!(flags.is_expired("dark_mode"), None);
     assert_eq!(flags.is_expired("does_not_exist"), None);
+}
+
+#[test]
+fn info_matches_the_fields_describe_renders() {
+    let flags = parse("flag checkout_v2 rollout=25 expires=2030-06-01\noverride checkout_v2 vip=true\n")
+        .expect("config should parse");
+
+    assert_eq!(
+        flags.info("checkout_v2"),
+        Some(FlagInfo {
+            enabled: true,
+            rollout: 25,
+            expires: Some("2030-06-01".to_string()),
+            overrides: 1,
+        })
+    );
+    assert_eq!(
+        flags.describe("checkout_v2").unwrap(),
+        "enabled=true rollout=25 expires=2030-06-01 overrides=1"
+    );
+    assert_eq!(flags.info("does_not_exist"), None);
 }
 
 #[test]

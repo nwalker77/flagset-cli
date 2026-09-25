@@ -138,6 +138,16 @@ struct Flag {
     overrides: HashMap<String, bool>,
 }
 
+/// Structured snapshot of a flag's static config, returned by
+/// [`FlagSet::info`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FlagInfo {
+    pub enabled: bool,
+    pub rollout: u8,
+    pub expires: Option<String>,
+    pub overrides: usize,
+}
+
 /// A parsed, ready-to-query set of flags.
 pub struct FlagSet {
     flags: HashMap<String, Flag>,
@@ -178,20 +188,27 @@ impl FlagSet {
         self.flags.keys().map(String::as_str)
     }
 
+    /// Structured snapshot of a flag's static config (ignores the key used
+    /// for evaluation). Returns `None` if the flag isn't declared. Meant for
+    /// callers that want to serialize the fields themselves (JSON output,
+    /// say) instead of scraping [`describe`](Self::describe)'s string.
+    pub fn info(&self, flag: &str) -> Option<FlagInfo> {
+        self.flags.get(flag).map(|f| FlagInfo {
+            enabled: f.enabled,
+            rollout: f.rollout,
+            expires: f.expires.map(civil_date_string),
+            overrides: f.overrides.len(),
+        })
+    }
+
     /// Human-readable summary of a flag's static config (ignores the key
     /// used for evaluation). Returns `None` if the flag isn't declared.
     pub fn describe(&self, flag: &str) -> Option<String> {
-        self.flags.get(flag).map(|f| {
-            let expires = match f.expires {
-                Some(days) => civil_date_string(days),
-                None => "none".to_string(),
-            };
+        self.info(flag).map(|info| {
+            let expires = info.expires.unwrap_or_else(|| "none".to_string());
             format!(
                 "enabled={} rollout={} expires={} overrides={}",
-                f.enabled,
-                f.rollout,
-                expires,
-                f.overrides.len()
+                info.enabled, info.rollout, expires, info.overrides
             )
         })
     }
